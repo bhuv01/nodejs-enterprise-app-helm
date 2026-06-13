@@ -10,7 +10,8 @@ on:
 # Least-privilege default; jobs elevate only what they need.
 permissions:
   contents: read
-
+  pull-requests: read
+  
 concurrency:
   group: ci-cd-${{ github.ref }}
   cancel-in-progress: true
