@@ -147,7 +147,7 @@ jobs:
 
       # ---- IaC / config scan ----
       - name: Trivy config scan (Dockerfile + K8s)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           scan-type: config
           scan-ref: .
