@@ -1,0 +1,10 @@
+{{ .Chart.Name }} {{ .Chart.Version }} deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Image:    {{ .Values.image.repository }}:{{ .Values.image.tag }}
+Replicas: {{ if .Values.autoscaling.enabled }}{{ .Values.autoscaling.minReplicas }}–{{ .Values.autoscaling.maxReplicas }} (HPA){{ else }}{{ .Values.replicaCount }}{{ end }}
+{{- if .Values.ingressRoute.enabled }}
+URL:      https://{{ .Values.ingressRoute.host }}
+{{- end }}
+
+Check rollout:
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "server-info.fullname" . }}

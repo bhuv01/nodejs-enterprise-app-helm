@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Live server time and hostname monitor." />
+    <title>server-info · live monitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="console" aria-live="polite">
+      <header class="bar">
+        <div class="bar__id">
+          <span class="dot" id="status-dot" data-state="connecting"></span>
+          <span class="bar__title">SERVER-INFO</span>
+        </div>
+        <span class="bar__status" id="status-text">connecting…</span>
+      </header>
+
+      <section class="clock" aria-label="Server time">
+        <div class="clock__time" id="clock-time">--:--:--</div>
+        <div class="clock__meta">
+          <span id="clock-date">————————</span>
+          <span class="clock__tz" id="clock-tz">UTC</span>
+        </div>
+      </section>
+
+      <section class="identity">
+        <div class="nameplate">
+          <span class="nameplate__label">HOSTNAME</span>
+          <span class="nameplate__value" id="hostname">—</span>
+        </div>
+        <dl class="facts">
+          <div class="fact"><dt>pod</dt><dd id="f-pod">—</dd></div>
+          <div class="fact"><dt>namespace</dt><dd id="f-ns">—</dd></div>
+          <div class="fact"><dt>node</dt><dd id="f-node">—</dd></div>
+          <div class="fact"><dt>platform</dt><dd id="f-platform">—</dd></div>
+          <div class="fact"><dt>uptime</dt><dd id="f-uptime">—</dd></div>
+          <div class="fact"><dt>runtime</dt><dd id="f-node-version">—</dd></div>
+        </dl>
+      </section>
+
+      <footer class="foot">
+        <span id="latency">— ms</span>
+        <span class="foot__sep">·</span>
+        <span>refresh 2s</span>
+      </footer>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

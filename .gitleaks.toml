@@ -1,0 +1,16 @@
+title = "server-info gitleaks config"
+
+[extend]
+# Start from the upstream default ruleset.
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''(.*?)(jpg|gif|png|svg)$''',
+  '''package-lock\.json''',
+  '''\.env\.example$''',
+]
+regexes = [
+  '''EXAMPLE_[A-Z0-9_]+''',
+]

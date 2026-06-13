@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+coverage
+.git
+.github
+.gitignore
+Dockerfile
+docker-compose.yml
+*.md
+k8s
+helm
+argocd
+.zap
+test

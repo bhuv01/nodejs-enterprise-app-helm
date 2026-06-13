@@ -1,0 +1,16 @@
+apiVersion: v2
+name: server-info
+description: Enterprise Node.js server-info app (Traefik IngressRoute, HPA, PDB, NetworkPolicy)
+type: application
+# Chart version: bump on chart/template changes.
+version: 0.1.0
+# appVersion is informational only — the running image tag is controlled by
+# .Values.image.tag (and bumped by ArgoCD Image Updater), not by this field.
+appVersion: "1.0.0"
+kubeVersion: ">=1.25.0-0"
+maintainers:
+  - name: platform-team
+keywords:
+  - nodejs
+  - traefik
+  - argocd

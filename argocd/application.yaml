@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: server-info
+  namespace: argocd
+  annotations:
+    # ArgoCD Image Updater: track ECR and write the new digest back to git.
+    # For a Helm source the image is mapped to values keys (image.repository / image.tag)
+    # and written into the chart's values.yaml via the helmvalues write-back target.
+    argocd-image-updater.argoproj.io/image-list: app=<AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/server-info
+    argocd-image-updater.argoproj.io/app.update-strategy: digest
+    argocd-image-updater.argoproj.io/app.helm.image-name: image.repository
+    argocd-image-updater.argoproj.io/app.helm.image-tag: image.tag
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+    argocd-image-updater.argoproj.io/write-back-target: helmvalues:/charts/server-info/values.yaml
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<ORG>/server-info.git
+    targetRevision: main
+    path: charts/server-info
+    helm:
+      releaseName: server-info
+      valueFiles:
+        - values.yaml
+  destination:
+    # On-prem RKE2 cluster registered with ArgoCD.
+    server: https://kubernetes.default.svc
+    namespace: server-info
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10
