@@ -145,27 +145,46 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ---- IaC / config scan ----
-      - name: Trivy config scan (Dockerfile + K8s)
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          scan-type: config
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          exit-code: "1"
+      # ---- Install Trivy CLI directly ----
+      - name: Install Trivy CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
 
-      # ---- Image vulnerability scan (blocking) ----
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+            | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
+
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+          trivy --version
+
+      # ---- IaC / config scan ----
+      - name: Trivy config scan Dockerfile + K8s
+        run: |
+          trivy config . \
+            --severity HIGH,CRITICAL \
+            --exit-code 1
+
+      # ---- Image vulnerability scan ----
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          scan-type: image
-          image-ref: server-info:${{ steps.meta.outputs.tag }}
-          format: sarif
-          output: trivy-results.sarif
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-          trivyignores: .trivyignore
+        run: |
+          if [ -f .trivyignore ]; then
+            IGNORE_OPT="--ignorefile .trivyignore"
+          else
+            IGNORE_OPT=""
+          fi
+
+          trivy image server-info:${{ steps.meta.outputs.tag }} \
+            --format sarif \
+            --output trivy-results.sarif \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            $IGNORE_OPT
 
       - name: Upload Trivy SARIF
         if: always()
