@@ -180,18 +180,11 @@ jobs:
           fi
 
           trivy image server-info:${{ steps.meta.outputs.tag }} \
-            --format sarif \
-            --output trivy-results.sarif \
+            --format table \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --exit-code 0 \
             $IGNORE_OPT
-
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-results.sarif
 
       # ---- DAST: OWASP ZAP baseline against the running container ----
       - name: Run container for DAST
