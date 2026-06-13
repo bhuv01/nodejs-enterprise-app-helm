@@ -120,6 +120,7 @@ jobs:
     name: build, scan & push
     runs-on: ubuntu-latest
     needs: [secret-scan, test, dependencies, sonarqube]
+    environment: prod
     permissions:
       contents: read
       id-token: write
