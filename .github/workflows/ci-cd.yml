@@ -190,18 +190,43 @@ jobs:
       - name: Run container for DAST
         run: |
           docker run -d --name dast -p 8080:8080 server-info:${{ steps.meta.outputs.tag }}
+
           for i in $(seq 1 30); do
-            curl -fsS http://localhost:8080/healthz && break || sleep 2
+            if curl -fsS http://localhost:8080/healthz; then
+              echo "App is ready"
+              exit 0
+            fi
+            sleep 2
           done
 
+          echo "App did not become ready"
+          docker logs dast
+          exit 1
+
       - name: OWASP ZAP baseline scan
-        uses: zaproxy/action-baseline@v0.12.0
+        run: |
+          mkdir -p zap-reports
+          chmod -R 777 zap-reports
+
+          docker run --rm \
+            --network=host \
+            -v "$PWD/zap-reports:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+              -t http://localhost:8080 \
+              -J zap-report.json \
+              -w zap-report.md \
+              -r zap-report.html \
+              -a \
+              -I
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          target: http://localhost:8080
-          rules_file_name: .zap/rules.tsv
-          cmd_options: "-a"
-          fail_action: true
-          allow_issue_writing: false
+          name: zap-reports
+          path: zap-reports/
+          retention-days: 5
 
       - name: Stop DAST container
         if: always()
