@@ -4,40 +4,32 @@
 
 # -- Number of replicas. Ignored when autoscaling.enabled=true (HPA owns it).
 replicaCount: 3
-
 image:
   # Full ECR repository. ArgoCD Image Updater writes back to image.repository / image.tag.
   repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/server-info
   # latest is a placeholder; CI / Image Updater pins this to the immutable SHA/digest tag.
-  tag: latest
+  tag: sha-d0d2c26903b4
   pullPolicy: IfNotPresent
-
 # Override the generated names if you ever need to.
 nameOverride: ""
 fullnameOverride: "server-info"
-
 # Scheduling priority — was added by the production overlay patch.
 priorityClassName: production-high
-
 revisionHistoryLimit: 5
-
 strategy:
   type: RollingUpdate
   rollingUpdate:
     maxSurge: 1
     maxUnavailable: 0
-
 serviceAccount:
   create: true
   name: server-info
   automountServiceAccountToken: false
-
 # Pod-level annotations. Prometheus scrape config lives here.
 podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "8080"
   prometheus.io/path: "/metrics"
-
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 1000
@@ -45,7 +37,6 @@ podSecurityContext:
   fsGroup: 1000
   seccompProfile:
     type: RuntimeDefault
-
 containerSecurityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -53,15 +44,12 @@ containerSecurityContext:
   capabilities:
     drop:
       - ALL
-
 # Application listen port inside the container.
 containerPort: 8080
-
 # Extra environment variables (in addition to the downward-API vars the template injects).
 env:
   - name: NODE_ENV
     value: "production"
-
 resources:
   requests:
     cpu: 100m
@@ -69,7 +57,6 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 probes:
   liveness:
     path: /healthz
@@ -87,18 +74,15 @@ probes:
     path: /healthz
     periodSeconds: 2
     failureThreshold: 30
-
 # Spread pods across nodes for HA.
 topologySpreadConstraints:
   - maxSkew: 1
     topologyKey: kubernetes.io/hostname
     whenUnsatisfiable: ScheduleAnyway
     # labelSelector is injected by the template using the chart's selector labels.
-
 service:
   type: ClusterIP
   port: 80
-
 autoscaling:
   enabled: true
   minReplicas: 3
@@ -118,11 +102,9 @@ autoscaling:
         - type: Percent
           value: 100
           periodSeconds: 30
-
 podDisruptionBudget:
   enabled: true
   minAvailable: 2
-
 networkPolicy:
   enabled: true
   # Namespaces allowed to reach the app on the container port.
@@ -131,7 +113,6 @@ networkPolicy:
     - monitoring
   # DNS-only egress by default (app has no other outbound dependency).
   allowDNS: true
-
 ingressRoute:
   enabled: true
   entryPoints:
@@ -151,7 +132,6 @@ ingressRoute:
       browserXssFilter: true
       referrerPolicy: "strict-origin-when-cross-origin"
       frameDeny: true
-
 # Optional pod scheduling controls.
 nodeSelector: {}
 tolerations: []
