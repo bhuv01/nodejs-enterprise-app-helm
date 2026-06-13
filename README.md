@@ -193,8 +193,8 @@ helm template server-info charts/server-info
 │   ├── server.js
 │   ├── routes/
 │   ├── middleware/
-│   └── public/             # Live ops-monitor UI
-├── test/                   # Jest suite
+│   └── public/             # Live ops-monitor UI.
+├── test/                   # Jest suite.
 ├── charts/
 │   └── server-info/        # Helm chart (templates/, values.yaml, Chart.yaml)
 ├── argocd/
