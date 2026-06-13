@@ -1,6 +1,23 @@
-# server-info
+# Demo Enterprise level pipeline
 
 Enterprise-grade Node.js service that reports **server time** and **hostname** through a JSON API and a live ops-monitor UI. Shipped with a full DevSecOps pipeline: secret scanning, SAST + quality gate, dependency audit, image scanning, DAST, ECR push, and GitOps delivery to an on-prem RKE2 cluster via ArgoCD.
+
+---
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Endpoints](#endpoints)
+- [Tech Stack](#tech-stack)
+- [Local Development](#local-development)
+- [Pipeline Stages](#pipeline-stages)
+- [Required GitHub Secrets](#required-github-secrets)
+- [One-Time Infrastructure Setup](#one-time-infrastructure-setup)
+- [Scaling & Availability](#scaling--availability)
+- [Security Controls](#security-controls)
+- [Project Layout](#project-layout)
+- [AWS OIDC Integration](#aws-oidc-integration)
+- [License](#license)
 
 ---
 
@@ -8,15 +25,15 @@ Enterprise-grade Node.js service that reports **server time** and **hostname** t
 
 ```
 Developer ──push──> GitHub ──Actions──┐
-                                       │  gitleaks → test → audit → SonarQube(QG)
-                                       │            → build → Trivy(image+IaC)
+                                       │  gitleaks → test → audit → SonarQube (QG)
+                                       │            → build → Trivy (image + IaC)
                                        │            → OWASP ZAP (DAST)
                                        │            → push to Amazon ECR
                                        │            → bump tag in k8s overlay (git)
                                        ▼
                               ArgoCD (on-prem) ──sync──> RKE2 cluster
-                                                          └─ Deployment (3+ pods, HPA→12)
-                                                          └─ Service / Traefik IngressRoute (HTTPS)
+                                                          ├─ Deployment (3+ pods, HPA → 12)
+                                                          ├─ Service / Traefik IngressRoute (HTTPS)
                                                           └─ PDB / NetworkPolicy / non-root pods
 ```
 
@@ -26,13 +43,13 @@ The app is **stateless** — it scales horizontally with zero coordination. Each
 
 ## Endpoints
 
-| Path         | Purpose                                            |
-| ------------ | -------------------------------------------------- |
-| `/`          | Live monitor UI (polls `/api/info` every 2s)       |
-| `/api/info`  | JSON: hostname, server time, uptime, pod/node info |
-| `/healthz`   | Liveness probe (always 200 if process is up)       |
-| `/readyz`    | Readiness probe (503 until app is ready / draining)|
-| `/metrics`   | Prometheus metrics (`server_info_*`)               |
+| Path        | Purpose                                              |
+| ----------- | ---------------------------------------------------- |
+| `/`         | Live monitor UI (polls `/api/info` every 2 s)        |
+| `/api/info` | JSON: hostname, server time, uptime, pod/node info   |
+| `/healthz`  | Liveness probe (always 200 if process is up)         |
+| `/readyz`   | Readiness probe (503 until app is ready / draining)  |
+| `/metrics`  | Prometheus metrics (`server_info_*`)                 |
 
 ```bash
 curl -s http://localhost:8080/api/info | jq
@@ -40,28 +57,32 @@ curl -s http://localhost:8080/api/info | jq
 
 ---
 
-## Tech stack
+## Tech Stack
 
-- **Runtime:** Node.js 20 (Express), `helmet`, `express-rate-limit`, `compression`, `pino` structured logs, `prom-client` metrics
-- **Container:** multi-stage Alpine, non-root (`uid 1000`), read-only rootfs, `tini` PID 1, `HEALTHCHECK`
-- **CI/CD:** GitHub Actions (OIDC to AWS — no static keys)
-- **Security gates:** gitleaks · SonarQube + Quality Gate · `npm audit` + dependency-review · Trivy (image + IaC) · OWASP ZAP (DAST) · CodeQL (scheduled)
-- **Registry:** Amazon ECR (scan-on-push, immutable tags, lifecycle policy)
-- **Delivery:** Helm chart + ArgoCD (native Helm source, auto-sync, self-heal) → on-prem RKE2
-- **Ingress:** Traefik `IngressRoute` (HTTPS, HSTS, security middleware)
+| Layer       | Technology                                                                                      |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| Runtime     | Node.js 20 (Express), `helmet`, `express-rate-limit`, `compression`, `pino`, `prom-client`     |
+| Container   | Multi-stage Alpine, non-root (`uid 1000`), read-only rootfs, `tini` PID 1, `HEALTHCHECK`       |
+| CI/CD       | GitHub Actions (OIDC to AWS — no static keys)                                                   |
+| Security    | gitleaks · SonarQube + QG · `npm audit` · dependency-review · Trivy · OWASP ZAP · CodeQL       |
+| Registry    | Amazon ECR (scan-on-push, immutable tags, lifecycle policy)                                     |
+| Delivery    | Helm chart + ArgoCD (native Helm source, auto-sync, self-heal) → on-prem RKE2                  |
+| Ingress     | Traefik `IngressRoute` (HTTPS, HSTS, security middleware)                                       |
 
 ---
 
-## Local development
+## Local Development
+
+### npm
 
 ```bash
 npm install
-npm run dev          # http://localhost:8080
-npm test             # jest + coverage (thresholds enforced)
+npm run dev    # http://localhost:8080
+npm test       # jest + coverage (thresholds enforced)
 npm run lint
 ```
 
-Docker:
+### Docker
 
 ```bash
 docker build -t server-info:local .
@@ -70,61 +91,63 @@ docker compose up    # runs hardened: read-only, cap-drop ALL, no-new-privileges
 
 ---
 
-## Pipeline stages (`.github/workflows/ci-cd.yml`)
+## Pipeline Stages
 
-Runs on every PR and on push to `main`. The deploy stage only runs on `main`.
+Defined in `.github/workflows/ci-cd.yml`. Runs on every PR and on push to `main`. The deploy stage only runs on `main`.
 
-| # | Job               | What it does                                              | Blocks on |
-|---|-------------------|-----------------------------------------------------------|-----------|
-| 1 | `secret-scan`     | gitleaks across full git history                          | any secret |
-| 2 | `test`            | eslint + jest, uploads coverage                           | lint/test fail |
-| 3 | `dependencies`    | `npm audit` (high+) + dependency-review on PRs            | high CVE |
-| 4 | `sonarqube`       | SAST scan + **Quality Gate** wait                         | QG fail |
-| 5 | `build-scan-push` | build → Trivy (IaC + image) → ZAP DAST → push ECR         | HIGH/CRIT vuln, DAST fail |
-| 6 | `deploy`          | bump image tag in overlay, commit → ArgoCD reconciles     | — |
+| # | Job               | What it does                                           | Blocks on             |
+| - | ----------------- | ------------------------------------------------------ | --------------------- |
+| 1 | `secret-scan`     | gitleaks across full git history                       | any secret found      |
+| 2 | `test`            | eslint + jest, uploads coverage                        | lint/test failure     |
+| 3 | `dependencies`    | `npm audit` (high+) + dependency-review on PRs         | high CVE              |
+| 4 | `sonarqube`       | SAST scan + Quality Gate wait                          | QG failure            |
+| 5 | `build-scan-push` | build → Trivy (IaC + image) → ZAP DAST → push to ECR  | HIGH/CRIT vuln, DAST  |
+| 6 | `deploy`          | bump image tag in overlay, commit → ArgoCD reconciles  | —                     |
 
-The image is **only pushed to ECR after every security gate passes**. Tags are immutable (`sha-<12char>`).
+> The image is **only pushed to ECR after every security gate passes**. Tags are immutable (`sha-<12char>`).
 
-Scheduled deep scan (`.github/workflows/security-scan.yml`): weekly Trivy filesystem/secret/misconfig scan + CodeQL, results uploaded to the GitHub **Security** tab.
-
----
-
-## Required GitHub secrets
-
-| Secret            | Description                                              |
-| ----------------- | -------------------------------------------------------- |
-| `AWS_ROLE_ARN`    | IAM role ARN assumed via OIDC (ECR push permissions)     |
-| `ECR_REGISTRY`    | `<acct>.dkr.ecr.us-east-1.amazonaws.com`                |
-| `SONAR_TOKEN`     | SonarQube token                                          |
-| `SONAR_HOST_URL`  | SonarQube server URL                                     |
-
-No long-lived AWS keys are stored — auth uses GitHub OIDC federation.
+A scheduled deep scan (`.github/workflows/security-scan.yml`) runs weekly: Trivy filesystem/secret/misconfig scan + CodeQL, with results uploaded to the GitHub **Security** tab.
 
 ---
 
-## One-time infrastructure setup
+## Required GitHub Secrets
 
-**AWS (ECR + OIDC role):**
+| Secret           | Description                                          |
+| ---------------- | ---------------------------------------------------- |
+| `AWS_ROLE_ARN`   | IAM role ARN assumed via OIDC (ECR push permissions) |
+| `ECR_REGISTRY`   | `<acct>.dkr.ecr.us-east-1.amazonaws.com`            |
+| `SONAR_TOKEN`    | SonarQube authentication token                       |
+| `SONAR_HOST_URL` | SonarQube server URL                                 |
+
+> No long-lived AWS keys are stored — authentication uses GitHub OIDC federation.
+
+---
+
+## One-Time Infrastructure Setup
+
+### AWS (ECR + OIDC Role)
 
 ```bash
 export GH_ORG=<your-org> AWS_REGION=us-east-1
 ./scripts/aws-bootstrap.sh
-# then create the IAM role trusting your repo and set AWS_ROLE_ARN secret
+# Then create the IAM role trusting your repo and set the AWS_ROLE_ARN secret
 ```
 
-**ArgoCD (on-prem RKE2):**
+### ArgoCD (on-prem RKE2)
 
 ```bash
-# edit argocd/application.yaml: replace <ORG> and <AWS_ACCOUNT_ID>
+# Edit argocd/application.yaml: replace <ORG> and <AWS_ACCOUNT_ID>
 ./scripts/argocd-bootstrap.sh
 argocd app get server-info
 ```
 
-Update the placeholders before first deploy:
+### Placeholders to Update Before First Deploy
 
-- `argocd/application.yaml` → `<ORG>`, `<AWS_ACCOUNT_ID>`
-- `charts/server-info/values.yaml` → `image.repository` (`<AWS_ACCOUNT_ID>` ECR URL)
-- `charts/server-info/values.yaml` → `ingressRoute.host` + `ingressRoute.tls.secretName`
+| File                               | Placeholder                                       |
+| ---------------------------------- | ------------------------------------------------- |
+| `argocd/application.yaml`          | `<ORG>`, `<AWS_ACCOUNT_ID>`                       |
+| `charts/server-info/values.yaml`   | `image.repository` (ECR URL with account ID)      |
+| `charts/server-info/values.yaml`   | `ingressRoute.host`, `ingressRoute.tls.secretName`|
 
 Render manifests locally to verify:
 
@@ -134,55 +157,70 @@ helm template server-info charts/server-info
 
 ---
 
-## Scaling & availability
+## Scaling & Availability
 
-- **HPA:** 3 → 12 replicas on CPU 70% / memory 80%, with scale-up/down stabilization
-- **PodDisruptionBudget:** `minAvailable: 2` protects during node drains
-- **Rolling updates:** `maxUnavailable: 0`, `maxSurge: 1` — zero-downtime
-- **Topology spread:** pods distributed across nodes
-- **Graceful shutdown:** SIGTERM flips readiness off, drains in-flight requests (10s timeout)
-
----
-
-## Security controls
-
-| Layer        | Control                                                              |
-| ------------ | ------------------------------------------------------------------- |
-| App          | helmet (CSP, HSTS), rate limiting, JSON body cap, no `x-powered-by`, error masking |
-| Container    | non-root, read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, distroless-style minimal Alpine |
-| Pod          | `runAsNonRoot`, `seccompProfile: RuntimeDefault`, `automountServiceAccountToken: false` |
-| Network      | NetworkPolicy: ingress only from Traefik + Prometheus; egress DNS only |
-| Supply chain | gitleaks, npm audit, dependency-review, Trivy, immutable tags, ECR scan-on-push |
-| Pipeline     | OIDC (no static creds), least-privilege job permissions, quality gate, DAST |
+| Feature              | Configuration                                                           |
+| -------------------- | ----------------------------------------------------------------------- |
+| HPA                  | 3 → 12 replicas on CPU 70% / memory 80%, with scale-up/down stabilization |
+| PodDisruptionBudget  | `minAvailable: 2` — protects during node drains                         |
+| Rolling updates      | `maxUnavailable: 0`, `maxSurge: 1` — zero-downtime deployments         |
+| Topology spread      | Pods distributed across nodes                                           |
+| Graceful shutdown    | SIGTERM flips readiness off, drains in-flight requests (10 s timeout)   |
 
 ---
 
-## Project layout
+## Security Controls
+
+| Layer        | Control                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| App          | helmet (CSP, HSTS), rate limiting, JSON body cap, no `x-powered-by`, error masking             |
+| Container    | Non-root, read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, minimal Alpine               |
+| Pod          | `runAsNonRoot`, `seccompProfile: RuntimeDefault`, `automountServiceAccountToken: false`         |
+| Network      | NetworkPolicy: ingress only from Traefik + Prometheus; egress DNS only                         |
+| Supply chain | gitleaks, npm audit, dependency-review, Trivy, immutable tags, ECR scan-on-push                |
+| Pipeline     | OIDC (no static creds), least-privilege job permissions, quality gate, DAST                    |
+
+---
+
+## Project Layout
 
 ```
 .
-├── .github/workflows/   ci-cd.yml, security-scan.yml
-├── src/                 app.js, server.js, routes/, middleware/, public/ (UI)
-├── test/                jest suite
-├── charts/server-info/  Helm chart (templates/, values.yaml, Chart.yaml)
-├── argocd/              application.yaml
-├── scripts/             aws-bootstrap.sh, argocd-bootstrap.sh
-├── Dockerfile           multi-stage hardened
-├── docker-compose.yml   hardened local run
-├── sonar-project.properties, .gitleaks.toml, .trivyignore, .zap/rules.tsv
+├── .github/
+│   └── workflows/          # ci-cd.yml, security-scan.yml
+├── src/
+│   ├── app.js
+│   ├── server.js
+│   ├── routes/
+│   ├── middleware/
+│   └── public/             # Live ops-monitor UI
+├── test/                   # Jest suite
+├── charts/
+│   └── server-info/        # Helm chart (templates/, values.yaml, Chart.yaml)
+├── argocd/
+│   └── application.yaml
+├── scripts/
+│   ├── aws-bootstrap.sh
+│   └── argocd-bootstrap.sh
+├── Dockerfile              # Multi-stage hardened build
+├── docker-compose.yml      # Hardened local run
+├── sonar-project.properties
+├── .gitleaks.toml
+├── .trivyignore
+├── .zap/
+│   └── rules.tsv
 └── README.md
 ```
 
 ---
 
-## License
+## AWS OIDC Integration
 
-MIT
+Follow these steps once to configure the IAM role that allows GitHub Actions to push images to ECR without storing long-lived credentials.
 
+### Step 1 — Create the trust policy
 
-AWS OIDC Integration
-
-1.
+```bash
 cat > trust.json <<EOF
 {
   "Version": "2012-10-17",
@@ -208,13 +246,19 @@ cat > trust.json <<EOF
   ]
 }
 EOF
+```
 
-2.
+### Step 2 — Create the IAM role
+
+```bash
 aws iam create-role \
   --role-name github-actions-server-info-ecr \
   --assume-role-policy-document file://trust.json
+```
 
-3.
+### Step 3 — Create the ECR push policy
+
+```bash
 cat > ecr-policy.json <<EOF
 {
   "Version": "2012-10-17",
@@ -244,11 +288,21 @@ cat > ecr-policy.json <<EOF
   ]
 }
 EOF
+```
 
-4.
+### Step 4 — Attach the policy to the role
+
+```bash
 aws iam put-role-policy \
   --role-name github-actions-server-info-ecr \
   --policy-name ecr-push-server-info \
   --policy-document file://ecr-policy.json
+```
 
-  
+After completing these steps, add the resulting role ARN as the `AWS_ROLE_ARN` GitHub secret.
+
+---
+
+## License
+
+MIT
