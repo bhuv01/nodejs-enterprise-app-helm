@@ -2,7 +2,7 @@
 # One-time AWS setup: ECR repo + GitHub OIDC role (no static keys in CI).
 set -euo pipefail
 
-AWS_REGION="${AWS_REGION:-ap-south-1}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 REPO="${ECR_REPOSITORY:-server-info}"
 GH_ORG="${GH_ORG:?set GH_ORG}"
 GH_REPO="${GH_REPO:-server-info}"
