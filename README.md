@@ -94,7 +94,7 @@ Scheduled deep scan (`.github/workflows/security-scan.yml`): weekly Trivy filesy
 | Secret            | Description                                              |
 | ----------------- | -------------------------------------------------------- |
 | `AWS_ROLE_ARN`    | IAM role ARN assumed via OIDC (ECR push permissions)     |
-| `ECR_REGISTRY`    | `<acct>.dkr.ecr.us-east-1.amazonaws.com`                |
+| `ECR_REGISTRY`    | `<acct>.dkr.ecr.ap-south-1.amazonaws.com`                |
 | `SONAR_TOKEN`     | SonarQube token                                          |
 | `SONAR_HOST_URL`  | SonarQube server URL                                     |
 
@@ -107,7 +107,7 @@ No long-lived AWS keys are stored — auth uses GitHub OIDC federation.
 **AWS (ECR + OIDC role):**
 
 ```bash
-export GH_ORG=<your-org> AWS_REGION=us-east-1
+export GH_ORG=<your-org> AWS_REGION=ap-south-1
 ./scripts/aws-bootstrap.sh
 # then create the IAM role trusting your repo and set AWS_ROLE_ARN secret
 ```
