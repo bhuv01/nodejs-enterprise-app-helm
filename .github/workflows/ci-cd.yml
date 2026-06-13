@@ -122,8 +122,9 @@ jobs:
     needs: [secret-scan, test, dependencies, sonarqube]
     permissions:
       contents: read
-      id-token: write # OIDC: short-lived AWS creds, no stored keys
-      security-events: write # upload Trivy SARIF to GitHub Security tab
+      id-token: write
+      security-events: write
+      actions: read
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
     steps:
