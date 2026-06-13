@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: ap-south-1
+  AWS_REGION: us-east-1
   ECR_REPOSITORY: server-info
   NODE_VERSION: "20"
 
