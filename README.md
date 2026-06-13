@@ -178,3 +178,77 @@ helm template server-info charts/server-info
 ## License
 
 MIT
+
+
+AWS OIDC Integration
+
+1.
+cat > trust.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::$AWS_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:bhuv01/nodejs-enterprise-app-helm:ref:refs/heads/main",
+            "repo:bhuv01/nodejs-enterprise-app-helm:environment:prod"
+          ]
+        }
+      }
+    }
+  ]
+}
+EOF
+
+2.
+aws iam create-role \
+  --role-name github-actions-server-info-ecr \
+  --assume-role-policy-document file://trust.json
+
+3.
+cat > ecr-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ECRAuth",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PushServerInfoImage",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:CompleteLayerUpload",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart",
+        "ecr:DescribeRepositories",
+        "ecr:BatchGetImage"
+      ],
+      "Resource": "arn:aws:ecr:us-east-1:$AWS_ACCOUNT_ID:repository/server-info"
+    }
+  ]
+}
+EOF
+
+4.
+aws iam put-role-policy \
+  --role-name github-actions-server-info-ecr \
+  --policy-name ecr-push-server-info \
+  --policy-document file://ecr-policy.json
+
+  
