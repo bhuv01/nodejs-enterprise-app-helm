@@ -114,7 +114,7 @@ networkPolicy:
   # DNS-only egress by default (app has no other outbound dependency).
   allowDNS: true
 ingressRoute:
-  enabled: true
+  enabled: false
   entryPoints:
     - websecure
   host: server-info.mindsparks.io
