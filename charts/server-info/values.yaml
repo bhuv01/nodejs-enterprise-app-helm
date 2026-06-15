@@ -8,7 +8,7 @@ image:
   # Full ECR repository. ArgoCD Image Updater writes back to image.repository / image.tag.
   repository: 797416043431.dkr.ecr.ap-south-1.amazonaws.com/server-info
   # latest is a placeholder; CI / Image Updater pins this to the immutable SHA/digest tag.
-  tag: sha-034b69661f56
+  tag: sha-3dc0da33f0c4
   pullPolicy: IfNotPresent
 # Override the generated names if you ever need to.
 nameOverride: ""
