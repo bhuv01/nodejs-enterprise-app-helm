@@ -13,6 +13,8 @@ image:
 # Override the generated names if you ever need to.
 nameOverride: ""
 fullnameOverride: "server-info"
+imagePullSecrets:
+  - name: ecr-pull-secret
 # Scheduling priority — was added by the production overlay patch.
 priorityClassName: ""
 revisionHistoryLimit: 5
