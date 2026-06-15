@@ -6,7 +6,7 @@
 replicaCount: 3
 image:
   # Full ECR repository. ArgoCD Image Updater writes back to image.repository / image.tag.
-  repository: 797416043431.dkr.ecr.us-east-1.amazonaws.com/server-info
+  repository: 797416043431.dkr.ecr.ap-south-1.amazonaws.com/server-info
   # latest is a placeholder; CI / Image Updater pins this to the immutable SHA/digest tag.
   tag: sha-d0d2c26903b4
   pullPolicy: IfNotPresent
