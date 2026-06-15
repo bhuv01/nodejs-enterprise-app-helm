@@ -218,6 +218,13 @@ helm template server-info charts/server-info
 
 Follow these steps once to configure the IAM role that allows GitHub Actions to push images to ECR without storing long-lived credentials.
 
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 \
+  --region us-east-1
+
+
 ### Step 1 — Create the trust policy
 
 ```bash
